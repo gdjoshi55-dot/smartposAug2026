@@ -63,7 +63,11 @@ export function toWhatsAppNumber(phone: string): string {
 export function openWhatsAppReceipt(phone: string, message: string) {
   const number = toWhatsAppNumber(phone);
   if (!number) return;
-  window.open(`https://wa.me/${number}?text=${encodeURIComponent(message)}`, "_blank");
+  const url = `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+  const win = window.open(url, "_blank");
+  if (!win) {
+    window.location.href = url;
+  }
 }
 
 export async function sendReceiptEmail(
