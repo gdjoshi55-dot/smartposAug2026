@@ -68,6 +68,7 @@ export default function KitchenMode({ onBack }: KitchenModeProps) {
   const [updatingOrderId, setUpdatingOrderId] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
   const seenOrderIds = useRef<Set<number>>(new Set());
+  const restaurantName = restaurant?.restaurant_name || "Kitchen Mode";
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30000);
@@ -209,7 +210,7 @@ export default function KitchenMode({ onBack }: KitchenModeProps) {
           <button onClick={onBack} className="p-2 hover:bg-blue-700 rounded-lg transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-lg font-bold">Kitchen Mode</h1>
+          <h1 className="text-lg font-bold">{restaurantName}</h1>
           <div className="w-9" />
         </header>
         <div className="flex items-center justify-center flex-1">
@@ -227,7 +228,7 @@ export default function KitchenMode({ onBack }: KitchenModeProps) {
         </button>
         <h1 className="text-lg font-bold flex items-center">
           <ChefHat className="w-5 h-5 mr-2" />
-          Kitchen Mode
+          {restaurantName} — Kitchen
         </h1>
         <div className="flex items-center space-x-2">
           <span className="hidden sm:inline text-xs text-blue-100">
@@ -314,6 +315,11 @@ export default function KitchenMode({ onBack }: KitchenModeProps) {
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
                         {getStatusLabel(status)}
                       </span>
+                      {order.table_number != null && order.tab_number != null && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                          T{order.table_number}-{order.tab_number}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center text-xs text-gray-500">
                       <Clock className="h-3.5 w-3.5 mr-1" />

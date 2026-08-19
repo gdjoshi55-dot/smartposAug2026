@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth, SubscriptionRequiredError } from '@/contexts/AuthContext';
 import Dashboard from '@/app/features/dashboard/Dashboard';
 import SubscriptionLocked from '@/components/subscription/SubscriptionLocked';
+import Link from 'next/link';
 import { Store, Mail, Lock, User, Phone, MapPin, FileText, Users, Percent, ArrowLeft, CheckCircle, Coins, Globe } from 'lucide-react';
 import { CURRENCIES, countriesForCurrency } from '@/app/features/owner/currencyData';
 import toast from 'react-hot-toast';
@@ -224,7 +225,8 @@ export default function Home() {
   const labelClass = 'block text-sm font-medium text-gray-700 mb-1.5';
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-blue-800 p-4 py-8">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-600 to-blue-800">
+      <div className="flex-1 flex items-center justify-center p-4 py-8">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="text-center pt-8 pb-4 px-8">
@@ -758,6 +760,29 @@ export default function Home() {
           )}
         </div>
       </div>
+      </div>
+
+      {/* Public Footer */}
+      <footer className="py-6 text-center">
+        <p className="text-sm text-white/70 mb-2">
+          &copy; 2026 SmartPOS &bull; Operated by GAJANAN DATTATRAYA JOSHI
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-white/50">
+          <Link href="/about" className="hover:text-white transition-colors">About</Link>
+          <span>&bull;</span>
+          <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
+          <span>&bull;</span>
+          <Link href="/products-and-services" className="hover:text-white transition-colors">Products and Services</Link>
+          <span>&bull;</span>
+          <Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy</Link>
+          <span>&bull;</span>
+          <Link href="/return-refund-policy" className="hover:text-white transition-colors">Refund</Link>
+          <span>&bull;</span>
+          <Link href="/cancellation-policy" className="hover:text-white transition-colors">Cancellation</Link>
+          <span>&bull;</span>
+          <Link href="/shipping-policy" className="hover:text-white transition-colors">Shipping</Link>
+        </div>
+      </footer>
     </div>
   );
 }

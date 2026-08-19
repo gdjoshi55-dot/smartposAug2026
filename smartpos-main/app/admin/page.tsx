@@ -190,7 +190,7 @@ export default function AdminPage() {
           <Shield className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h1 className="text-xl font-bold text-gray-900 mb-2">Access Denied</h1>
           <p className="text-gray-500 text-sm mb-6">
-            This is the Alta Software owner&apos;s panel. You are not authorized to
+            This is the owner&apos;s panel. You are not authorized to
             view this page.
           </p>
           <div className="flex justify-center gap-3">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { ShoppingCart, Plus, Minus, Printer, MessageCircle, X, Search } from "lucide-react";
+import { ShoppingCart, Plus, Minus, Printer, MessageCircle, X, Search, CreditCard } from "lucide-react";
 import { usePOSStore } from "@/lib/store";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatCurrency } from "@/lib/utils";
@@ -148,12 +148,14 @@ function PaymentModal({
   amount,
   customerInfo,
   currency,
+  restaurantName,
   onSuccess,
   onCancel,
 }: {
   amount: number;
   customerInfo: { name: string; phone: string; email?: string };
   currency: string;
+  restaurantName: string;
   onSuccess: (data: {
     method: "online" | "cash";
     razorpayOrderId?: string;
@@ -188,7 +190,7 @@ function PaymentModal({
         key: RAZORPAY_KEY,
         amount: order.amount,
         currency: order.currency,
-        name: "SmartPOS",
+        name: restaurantName,
         description: "Food Order",
         order_id: order.id,
         handler: (response: any) => {
@@ -354,7 +356,7 @@ function ReceiptModal({ order, currency, onClose }: { order: any; currency: stri
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[85vh] overflow-y-auto p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900">SmartPOS Receipt</h2>
+          <h2 className="text-xl font-bold text-gray-900">{order.restaurantName || 'Receipt'}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="h-5 w-5" />
           </button>
@@ -477,19 +479,31 @@ export default function CustomerMode({ onBack }: { onBack: () => void }) {
     createOrder,
     getCartTotal,
     fetchProducts,
+    selectedTable,
+    selectedTab,
+    setSelectedTable,
+    setSelectedTab,
+    settleTab,
+    activeOrders,
+    activeOrdersLoading,
+    fetchActiveOrders,
   } = usePOSStore();
   const { restaurant } = useAuth();
   const restaurantId = restaurant?.restaurant_id;
   const currency = restaurant?.currency || 'INR';
+  const restaurantName = restaurant?.restaurant_name || 'SmartPOS';
 
   useEffect(() => {
     if (restaurantId) {
       fetchProducts(restaurantId);
+      fetchActiveOrders(restaurantId, selectedTable, selectedTab);
     }
-  }, [restaurantId, fetchProducts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurantId]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!e.key) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.key.toLowerCase() !== "b") return;
       const target = e.target as HTMLElement | null;
@@ -540,6 +554,16 @@ export default function CustomerMode({ onBack }: { onBack: () => void }) {
     if (cart.length === 0) return;
     setShowMobileCart(false);
     setShowCustomerInfo(true);
+  };
+
+  const handleSettleAll = async () => {
+    if (!restaurantId) return;
+    try {
+      await settleTab(restaurantId, selectedTable, selectedTab);
+      toast.success("Tab settled and cleared!");
+    } catch {
+      toast.error("Failed to settle tab");
+    }
   };
 
   const handleCustomerInfoSubmit = (info: {
@@ -601,6 +625,7 @@ export default function CustomerMode({ onBack }: { onBack: () => void }) {
         cashReceived: paymentData.cashReceived,
         change: paymentData.change,
         currency,
+        restaurantName,
         customerInfo: customerInfo,
       };
 
@@ -615,7 +640,7 @@ export default function CustomerMode({ onBack }: { onBack: () => void }) {
       if (customerInfo.email) {
         sendReceiptEmail(
           customerInfo.email,
-          `Your SmartPOS Receipt - Order #${order.id}`,
+          `Your ${restaurantName} Receipt - Order #${order.id}`,
           receiptText
         ).catch((err: Error) => {
           console.error("Failed to send receipt email:", err);
@@ -633,59 +658,123 @@ export default function CustomerMode({ onBack }: { onBack: () => void }) {
     }
   };
 
+  const activeOrdersTotal = useMemo(
+    () => activeOrders.reduce((sum, o) => sum + o.total, 0),
+    [activeOrders]
+  );
+  const activeOrdersTax = useMemo(
+    () => activeOrders.reduce((sum, o) => sum + o.tax, 0),
+    [activeOrders]
+  );
+  const activeOrdersSubtotal = useMemo(
+    () => activeOrders.reduce((sum, o) => sum + o.subtotal, 0),
+    [activeOrders]
+  );
+
   const CartContent = () => (
     <div className="h-full flex flex-col">
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {cart.length === 0 ? (
+        {activeOrders.length === 0 && cart.length === 0 ? (
           <div className="text-center text-gray-400 py-12">
             <ShoppingCart className="h-12 w-12 mx-auto mb-3 text-gray-300" />
             <p>Cart is empty</p>
           </div>
         ) : (
-          cart.map((item) => (
-            <div key={item.key} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-                {item.options && item.options.length > 0 && (
-                  <p className="text-xs text-blue-700 truncate">{item.options.join(", ")}</p>
+          <>
+            {activeOrders.length > 0 && (
+              <>
+                <div className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">
+                  Previous Orders ({activeOrders.length})
+                </div>
+                {activeOrders.map((order) => (
+                  <div key={order.id} className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-blue-800">Order #{order.id}</span>
+                      <span className="text-xs text-blue-600">{formatCurrency(order.total, currency)}</span>
+                    </div>
+                    {order.items.map((item, i) => (
+                      <div key={i} className="flex justify-between text-xs text-gray-700">
+                        <span>{item.name} x{item.quantity}</span>
+                        <span>{formatCurrency(item.price * item.quantity, currency)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                <div className="border-t border-blue-200 pt-2 mt-2">
+                  <div className="flex justify-between text-sm font-semibold text-blue-800">
+                    <span>Previous Total</span>
+                    <span>{formatCurrency(activeOrdersTotal, currency)}</span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {cart.length > 0 && (
+              <>
+                {activeOrders.length > 0 && (
+                  <div className="text-xs font-semibold text-blue-700 uppercase tracking-wide mt-2 mb-1">
+                    New Items
+                  </div>
                 )}
-                {item.notes && <p className="text-xs text-gray-500 truncate">{item.notes}</p>}
-                <p className="text-xs text-gray-500">{formatCurrency(item.price, currency)} each</p>
-              </div>
-              <div className="flex items-center space-x-2 mx-3">
-                <button
-                  className="p-1.5 bg-white border border-gray-200 rounded-md hover:bg-gray-100 transition-colors"
-                  onClick={() => updateCartQuantity(item.key, item.quantity - 1)}
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                </button>
-                <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
-                <button
-                  className="p-1.5 bg-white border border-gray-200 rounded-md hover:bg-gray-100 transition-colors"
-                  onClick={() => updateCartQuantity(item.key, item.quantity + 1)}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              <span className="text-sm font-semibold text-gray-900 w-16 text-right">
-                {formatCurrency(item.price * item.quantity, currency)}
-              </span>
-            </div>
-          ))
+                {cart.map((item) => (
+                  <div key={item.key} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+                      {item.options && item.options.length > 0 && (
+                        <p className="text-xs text-blue-700 truncate">{item.options.join(", ")}</p>
+                      )}
+                      {item.notes && <p className="text-xs text-gray-500 truncate">{item.notes}</p>}
+                      <p className="text-xs text-gray-500">{formatCurrency(item.price, currency)} each</p>
+                    </div>
+                    <div className="flex items-center space-x-2 mx-3">
+                      <button
+                        className="p-1.5 bg-white border border-gray-200 rounded-md hover:bg-gray-100 transition-colors"
+                        onClick={() => updateCartQuantity(item.key, item.quantity - 1)}
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
+                      <button
+                        className="p-1.5 bg-white border border-gray-200 rounded-md hover:bg-gray-100 transition-colors"
+                        onClick={() => updateCartQuantity(item.key, item.quantity + 1)}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900 w-16 text-right">
+                      {formatCurrency(item.price * item.quantity, currency)}
+                    </span>
+                  </div>
+                ))}
+              </>
+            )}
+          </>
         )}
       </div>
       <div className="p-4 border-t bg-gray-50 space-y-2">
+        {activeOrders.length > 0 && (
+          <>
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>Previous Subtotal</span>
+              <span>{formatCurrency(activeOrdersSubtotal, currency)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>Previous Tax</span>
+              <span>{formatCurrency(activeOrdersTax, currency)}</span>
+            </div>
+          </>
+        )}
         <div className="flex justify-between text-sm text-gray-600">
-          <span>Subtotal</span>
+          <span>New Subtotal</span>
           <span>{formatCurrency(cartTotal, currency)}</span>
         </div>
         <div className="flex justify-between text-sm text-gray-600">
-          <span>Tax (18%)</span>
+          <span>New Tax (18%)</span>
           <span>{formatCurrency(taxAmount, currency)}</span>
         </div>
         <div className="flex justify-between font-bold text-gray-900 pt-2 border-t">
-          <span>Total</span>
-          <span>{formatCurrency(totalWithTax, currency)}</span>
+          <span>Grand Total</span>
+          <span>{formatCurrency(activeOrdersTotal + totalWithTax, currency)}</span>
         </div>
         <button
           className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium mt-2"
@@ -708,7 +797,7 @@ export default function CustomerMode({ onBack }: { onBack: () => void }) {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-blue-600 text-white px-4 py-3 flex items-center justify-between shadow-md">
-        <h1 className="text-lg font-bold">SmartPOS</h1>
+        <h1 className="text-lg font-bold">{restaurantName}</h1>
         <div className="flex items-center space-x-2">
           <span className="text-sm text-blue-100 hidden sm:inline">{cartItemCount} items</span>
           <button
@@ -719,6 +808,47 @@ export default function CustomerMode({ onBack }: { onBack: () => void }) {
           </button>
         </div>
       </header>
+
+      {/* Table / Tab selector bar */}
+      <div className="bg-white border-b border-gray-200 px-4 py-2.5 flex items-center gap-3 overflow-x-auto">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-semibold text-gray-500 uppercase">Table</span>
+          <select
+            value={selectedTable}
+            onChange={(e) => setSelectedTable(parseInt(e.target.value), restaurantId)}
+            className="text-sm font-bold text-gray-900 bg-gray-100 border border-gray-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none"
+          >
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+              <option key={n} value={n}>Table {n}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="h-5 w-px bg-gray-300" />
+
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-semibold text-gray-500 uppercase">Tab</span>
+          <select
+            value={selectedTab}
+            onChange={(e) => setSelectedTab(parseInt(e.target.value), restaurantId)}
+            className="text-sm font-bold text-gray-900 bg-gray-100 border border-gray-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none"
+          >
+            {[1, 2, 3, 4].map((n) => (
+              <option key={n} value={n}>{selectedTable}-{n}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex-1" />
+
+        <button
+          onClick={handleSettleAll}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap"
+        >
+          <CreditCard className="w-4 h-4" />
+          Settle All
+        </button>
+      </div>
 
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 p-4 overflow-y-auto">
@@ -794,7 +924,7 @@ export default function CustomerMode({ onBack }: { onBack: () => void }) {
 
         <div className="hidden lg:flex lg:w-80 bg-white shadow-md border-l border-gray-200 flex-col">
           <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-bold text-gray-900">Cart</h2>
+              <h2 className="text-lg font-bold text-gray-900">Cart — {selectedTable}-{selectedTab}</h2>
           </div>
           <CartContent />
         </div>
@@ -804,7 +934,7 @@ export default function CustomerMode({ onBack }: { onBack: () => void }) {
         <div className="fixed inset-0 bg-black/50 z-40 flex justify-end">
           <div className="w-80 bg-white shadow-lg flex flex-col max-w-full">
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h2 className="text-lg font-bold text-gray-900">Cart</h2>
+            <h2 className="text-lg font-bold text-gray-900">Cart — {selectedTable}-{selectedTab}</h2>
               <button
                 onClick={() => setShowMobileCart(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -828,6 +958,7 @@ export default function CustomerMode({ onBack }: { onBack: () => void }) {
           amount={totalWithTax}
           customerInfo={customerInfo}
           currency={currency}
+          restaurantName={restaurantName}
           onSuccess={handlePaymentSuccess}
           onCancel={() => setShowPayment(false)}
         />

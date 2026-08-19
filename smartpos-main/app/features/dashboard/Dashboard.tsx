@@ -218,8 +218,8 @@ export default function Dashboard() {
           <div className="flex items-center">
             <Store className="h-8 w-8 mr-3" />
             <div>
-              <h1 className="text-lg font-bold">SmartPOS</h1>
-              <p className="text-xs text-blue-200">Restaurant System</p>
+              <h1 className="text-lg font-bold">{restaurant.restaurant_name}</h1>
+              <p className="text-xs text-blue-200">SmartPOS</p>
             </div>
           </div>
           <button
@@ -317,7 +317,7 @@ export default function Dashboard() {
             <div>
               <h2 className="text-lg font-semibold text-gray-900">
                 {ownerAccess
-                  ? 'Alta Software — Owner'
+                  ?               'Owner'
                   : sidebarItems.find((item) => item.id === activeSection)?.name || 'Point of Sale'}
               </h2>
               <p className="text-xs text-gray-500 hidden sm:block">
@@ -359,9 +359,9 @@ export default function Dashboard() {
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-lg">
                   <Shield className="h-8 w-8 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Alta Software Owner Panel</h3>
+                <h3 className="text-xl font-bold text-gray-900">Owner Panel</h3>
                 <p className="text-gray-500 text-sm mt-1">
-                  Manage the Alta Software platform. No subscription is required for this account.
+                  Manage the platform. No subscription is required for this account.
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

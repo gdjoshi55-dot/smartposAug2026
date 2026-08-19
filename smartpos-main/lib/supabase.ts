@@ -188,6 +188,8 @@ export type Database = {
           payment_method: string;
           status: string;
           order_type: string;
+          table_number: number | null;
+          tab_number: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -205,10 +207,14 @@ export type Database = {
           payment_method?: string;
           status?: string;
           order_type?: string;
+          table_number?: number | null;
+          tab_number?: number | null;
         };
         Update: {
           status?: string;
           payment_method?: string;
+          table_number?: number | null;
+          tab_number?: number | null;
         };
       };
       subscription_plans: {

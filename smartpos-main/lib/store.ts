@@ -23,16 +23,35 @@ export interface CartItem {
   notes?: string;
 }
 
+export interface ActiveOrder {
+  id: number;
+  items: { name: string; price: number; quantity: number; options?: string[]; notes?: string }[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  status: string;
+  payment_method: string;
+  created_at: string;
+}
+
 interface POSState {
   products: Product[];
   cart: CartItem[];
   loading: boolean;
+  selectedTable: number;
+  selectedTab: number;
+  activeOrders: ActiveOrder[];
+  activeOrdersLoading: boolean;
+  setSelectedTable: (table: number, restaurantId?: string) => void;
+  setSelectedTab: (tab: number, restaurantId?: string) => void;
+  fetchActiveOrders: (restaurantId: string, tableNumber: number, tabNumber: number) => Promise<void>;
   fetchProducts: (restaurantId: string) => Promise<void>;
   refreshProducts: () => Promise<void>;
   addToCart: (product: Product, options?: string[], notes?: string) => void;
   updateCartQuantity: (key: string, quantity: number) => void;
   clearCart: () => void;
   getCartTotal: () => number;
+  settleTab: (restaurantId: string, tableNumber: number, tabNumber: number) => Promise<void>;
   createOrder: (orderData: {
     restaurant_id: string;
     razorpay_order_id?: string;
@@ -54,6 +73,45 @@ export const usePOSStore = create<POSState>((set, get) => ({
   products: [],
   cart: [],
   loading: false,
+  selectedTable: 1,
+  selectedTab: 1,
+  activeOrders: [],
+  activeOrdersLoading: false,
+
+  setSelectedTable: (table: number, restaurantId?: string) => {
+    set({ selectedTable: table, selectedTab: 1 });
+    if (restaurantId) {
+      get().fetchActiveOrders(restaurantId, table, 1);
+    }
+  },
+
+  setSelectedTab: (tab: number, restaurantId?: string) => {
+    set({ selectedTab: tab });
+    if (restaurantId) {
+      get().fetchActiveOrders(restaurantId, get().selectedTable, tab);
+    }
+  },
+
+  fetchActiveOrders: async (restaurantId: string, tableNumber: number, tabNumber: number) => {
+    set({ activeOrdersLoading: true });
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .eq('table_number', tableNumber)
+        .eq('tab_number', tabNumber)
+        .in('status', ['pending', 'in_progress'])
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      set({ activeOrders: (data || []) as ActiveOrder[] });
+    } catch (err) {
+      console.error('Error fetching active orders:', err);
+      set({ activeOrders: [] });
+    } finally {
+      set({ activeOrdersLoading: false });
+    }
+  },
 
   fetchProducts: async (restaurantId: string) => {
     currentRestaurantId = restaurantId;
@@ -77,6 +135,23 @@ export const usePOSStore = create<POSState>((set, get) => ({
   refreshProducts: async () => {
     if (currentRestaurantId) {
       await get().fetchProducts(currentRestaurantId);
+    }
+  },
+
+  settleTab: async (restaurantId: string, tableNumber: number, tabNumber: number) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'settled', updated_at: new Date().toISOString() })
+        .eq('restaurant_id', restaurantId)
+        .eq('table_number', tableNumber)
+        .eq('tab_number', tabNumber)
+        .in('status', ['pending', 'in_progress']);
+      if (error) throw error;
+      set({ activeOrders: [], cart: [] });
+    } catch (err) {
+      console.error('Error settling tab:', err);
+      throw err;
     }
   },
 
@@ -126,6 +201,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
   },
 
   createOrder: async (orderData) => {
+    const { selectedTable, selectedTab } = get();
     const { data, error } = await supabase
       .from('orders')
       .insert({
@@ -142,6 +218,8 @@ export const usePOSStore = create<POSState>((set, get) => ({
         payment_method: orderData.payment_method,
         status: 'pending',
         order_type: 'customer',
+        table_number: selectedTable,
+        tab_number: selectedTab,
       })
       .select()
       .single();
@@ -149,6 +227,11 @@ export const usePOSStore = create<POSState>((set, get) => ({
     if (error) {
       console.error('Error creating order:', error);
       throw error;
+    }
+
+    // After creating, refresh active orders for this tab
+    if (orderData.restaurant_id) {
+      get().fetchActiveOrders(orderData.restaurant_id, selectedTable, selectedTab);
     }
 
     return data;

@@ -11,6 +11,7 @@ export interface ReceiptOrder {
   cashReceived?: number;
   change?: number;
   currency?: string;
+  restaurantName?: string;
   customerInfo?: {
     name: string;
     phone: string;
@@ -21,7 +22,7 @@ export interface ReceiptOrder {
 export function buildReceiptText(order: ReceiptOrder): string {
   const lines: string[] = [];
   const currency = order.currency || 'INR';
-  lines.push("SmartPOS Receipt");
+  lines.push(order.restaurantName || "SmartPOS Receipt");
   lines.push(`Order #${order.id}`);
   lines.push(`Date: ${new Date(order.created_at).toLocaleString()}`);
   lines.push("----------------------");
