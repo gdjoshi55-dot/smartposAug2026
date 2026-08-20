@@ -1,76 +1,130 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth, SubscriptionRequiredError } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import Dashboard from '@/app/features/dashboard/Dashboard';
 import SubscriptionLocked from '@/components/subscription/SubscriptionLocked';
 import Link from 'next/link';
-import { Store, Mail, Lock, User, Phone, MapPin, FileText, Users, Percent, ArrowLeft, CheckCircle, Coins, Globe } from 'lucide-react';
-import { CURRENCIES, countriesForCurrency } from '@/app/features/owner/currencyData';
-import toast from 'react-hot-toast';
+import {
+  Store,
+  Check,
+  ArrowRight,
+  ShoppingCart,
+  CreditCard,
+  LayoutGrid,
+  BarChart3,
+  Package,
+  ClipboardList,
+  Shield,
+  Cloud,
+  Zap,
+  Users,
+  Phone,
+  Mail,
+  MapPin,
+  Lock,
+  Facebook,
+  Instagram,
+  Linkedin,
+  Menu,
+  X,
+} from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
-type Tab = 'login' | 'signup' | 'migrate' | 'forgot';
+const navLinks = [
+  { label: 'Home', href: '/' },
+  { label: 'About Us', href: '/about' },
+  { label: 'Products & Services', href: '/products-and-services' },
+  { label: 'Pricing', href: '/#pricing' },
+  { label: 'Features', href: '/#features' },
+  { label: 'Contact Us', href: '/contact' },
+];
+
+const featureCards = [
+  {
+    icon: ShoppingCart,
+    title: 'Order Management',
+    description:
+      'Manage dine-in, takeaway, and online orders from a single dashboard. Track order status in real time.',
+  },
+  {
+    icon: CreditCard,
+    title: 'Billing & Invoicing',
+    description:
+      'Generate accurate bills, apply taxes and discounts, and send digital receipts to customers.',
+  },
+  {
+    icon: LayoutGrid,
+    title: 'Table Management',
+    description:
+      'Manage table layouts, capacity, and reservations. Assign tables and track occupancy in real time.',
+  },
+  {
+    icon: ClipboardList,
+    title: 'Menu Management',
+    description:
+      'Add categories, items, variants, and update prices. Keep your menu organised and always up to date.',
+  },
+  {
+    icon: Package,
+    title: 'Inventory Control',
+    description:
+      'Track stock levels, set low-stock alerts, and reduce food wastage with real-time inventory tracking.',
+  },
+  {
+    icon: BarChart3,
+    title: 'Reports & Analytics',
+    description:
+      'Access real-time sales reports, revenue insights, and business analytics to grow your restaurant.',
+  },
+];
+
+const monthlyChecks = [
+  'All Core Features',
+  'Cloud Access',
+  'Regular Updates',
+  'Email Support',
+];
+
+const annualChecks = [
+  'All Core Features',
+  'Cloud Access',
+  'Priority Support',
+  'Regular Updates',
+  'Free Setup Assistance',
+];
 
 export default function Home() {
-  const { restaurant, subscription, loading, signInWithEmail, signUp, migrate, resetPassword } = useAuth();
-  const router = useRouter();
-  const [tab, setTab] = useState<Tab>('login');
+  const { restaurant, subscription, loading } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState('/');
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
-  const [notice, setNotice] = useState<{ activated: boolean; email: string }>({
-    activated: false,
-    email: '',
-  });
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('activated') === '1') {
-      const email = params.get('email') || '';
-      setNotice({ activated: true, email });
-      if (email) setLoginEmail(email);
-    }
+  const setSectionRef = useCallback((id: string) => (el: HTMLElement | null) => {
+    sectionRefs.current[id] = el;
   }, []);
 
-  // Login state
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
+  useEffect(() => {
+    const sections = Object.entries(sectionRefs.current).filter(([, el]) => el);
+    if (sections.length === 0) return;
 
-  // Sign Up state
-  const [suName, setSuName] = useState('');
-  const [suEmail, setSuEmail] = useState('');
-  const [suPassword, setSuPassword] = useState('');
-  const [suGst, setSuGst] = useState('');
-  const [suPhone, setSuPhone] = useState('');
-  const [suAddr1, setSuAddr1] = useState('');
-  const [suAddr2, setSuAddr2] = useState('');
-  const [suAddr3, setSuAddr3] = useState('');
-  const [suOwner1, setSuOwner1] = useState('');
-  const [suOwner2, setSuOwner2] = useState('');
-  const [suOwner3, setSuOwner3] = useState('');
-  const [suOwner4, setSuOwner4] = useState('');
-  const [suTaxRate, setSuTaxRate] = useState('18');
-  const [suMpin, setSuMpin] = useState('1234');
-  const [suCurrency, setSuCurrency] = useState('INR');
-  const [suCountryCode, setSuCountryCode] = useState('IN');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const id = entry.target.getAttribute('data-section');
+            if (id) setActiveSection(id);
+          }
+        });
+      },
+      { rootMargin: '-20% 0px -60% 0px' }
+    );
 
-  const handleCurrencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const code = e.target.value;
-    setSuCurrency(code);
-    const matching = countriesForCurrency(code);
-    if (matching.length > 0) setSuCountryCode(matching[0]);
-  };
+    sections.forEach(([, el]) => {
+      if (el) observer.observe(el);
+    });
 
-  // Migrate state
-  const [mRestId, setMRestId] = useState('');
-  const [mEmail, setMEmail] = useState('');
-  const [mPassword, setMPassword] = useState('');
-
-  // Forgot Password state
-  const [fpEmail, setFpEmail] = useState('');
-  const [fpPassword, setFpPassword] = useState('');
-  const [fpConfirm, setFpConfirm] = useState('');
-
-  const [submitting, setSubmitting] = useState(false);
+    return () => observer.disconnect();
+  }, [restaurant, subscription, loading]);
 
   if (loading) {
     return (
@@ -104,683 +158,450 @@ export default function Home() {
     return <Dashboard />;
   }
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!loginEmail.trim() || !loginPassword.trim()) {
-      toast.error('Please enter email and password');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await signInWithEmail(loginEmail, loginPassword);
-      toast.success('Welcome to SmartPOS!');
-    } catch (err: any) {
-      if (err instanceof SubscriptionRequiredError) {
-        toast.error('No active subscription. Please subscribe to continue.');
-        router.push(`/subscription?restaurantId=${err.restaurantId}&email=${encodeURIComponent(loginEmail)}`);
-        return;
-      }
-      toast.error(err.message || 'Failed to sign in');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!suName.trim() || !suEmail.trim() || !suPassword.trim()) {
-      toast.error('Please fill in restaurant name, email, and password');
-      return;
-    }
-    if (suPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await signUp({
-        restaurant_name: suName,
-        login_name: suEmail,
-        password: suPassword,
-        gst_number: suGst,
-        phone: suPhone,
-        address_line1: suAddr1,
-        address_line2: suAddr2,
-        address_line3: suAddr3,
-        owner1: suOwner1,
-        owner2: suOwner2,
-        owner3: suOwner3,
-        owner4: suOwner4,
-        tax_rate: parseFloat(suTaxRate) || 18,
-        mpin: suMpin,
-        currency: suCurrency,
-        country_code: suCountryCode,
-      });
-        toast.success('Account created! Start your free trial or choose a plan to continue.');
-      } catch (err: any) {
-        if (err instanceof SubscriptionRequiredError) {
-          toast.success('Account created! Start your free trial or choose a plan to continue.');
-        router.push(`/subscription?restaurantId=${err.restaurantId}&email=${encodeURIComponent(suEmail)}`);
-        return;
-      }
-      toast.error(err.message || 'Failed to create account');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleMigrate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!mRestId.trim() || !mEmail.trim() || !mPassword.trim()) {
-      toast.error('Please fill in all fields');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await migrate(mRestId, mEmail, mPassword);
-      toast.success('Account migrated successfully!');
-    } catch (err: any) {
-      if (err instanceof SubscriptionRequiredError) {
-        toast.error('Account updated. Please subscribe to continue.');
-        router.push(`/subscription?restaurantId=${err.restaurantId}&email=${encodeURIComponent(mEmail)}`);
-        return;
-      }
-      toast.error(err.message || 'Failed to migrate account');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleForgot = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!fpEmail.trim() || !fpPassword.trim() || !fpConfirm.trim()) {
-      toast.error('Please fill in all fields');
-      return;
-    }
-    if (fpPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
-      return;
-    }
-    if (fpPassword !== fpConfirm) {
-      toast.error('Passwords do not match');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await resetPassword(fpEmail, fpPassword);
-      toast.success('Password reset successfully! Please login.');
-      setFpEmail('');
-      setFpPassword('');
-      setFpConfirm('');
-      setTab('login');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to reset password');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const inputClass =
-    'w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm';
-  const labelClass = 'block text-sm font-medium text-gray-700 mb-1.5';
-
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-600 to-blue-800">
-      <div className="flex-1 flex items-center justify-center p-4 py-8">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="text-center pt-8 pb-4 px-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-lg">
-            <Store className="h-8 w-8 text-white" />
+    <div className="min-h-screen bg-white">
+      {/* ========== NAVBAR ========== */}
+      <nav className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-[1200px] mx-auto px-4 lg:px-6 py-3 flex items-center justify-between">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2">
+            <div className="w-9 h-9 border-2 border-blue-600 rounded-xl flex items-center justify-center">
+              <Store className="h-5 w-5 text-blue-600" />
+            </div>
+            <div className="leading-tight">
+              <span className="text-lg font-bold">
+                <span className="text-[#0B1B3A]">Smart</span>
+                <span className="text-[#1E5FE8]">POS</span>
+              </span>
+              <p className="text-[10px] text-gray-400 -mt-0.5">Restaurant Management System</p>
+            </div>
+          </Link>
+
+          {/* Center Nav Links (hidden on mobile) */}
+          <div className="hidden lg:flex items-center gap-6">
+            {navLinks.map((link) => {
+              const isActive = activeSection === link.href;
+              return (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className={`text-sm font-medium transition-colors pb-0.5 ${
+                    isActive
+                      ? 'text-[#1E5FE8] border-b-2 border-[#1E5FE8]'
+                      : 'text-gray-600 hover:text-gray-900 border-b-2 border-transparent'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">SmartPOS</h1>
-          <p className="text-gray-500 mt-1 text-sm">Restaurant Management System</p>
+
+          {/* Right CTA */}
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="hidden sm:inline-flex text-sm font-medium border border-[#1E5FE8] text-[#1E5FE8] px-5 py-2 rounded-lg hover:bg-blue-50 transition-colors"
+            >
+              Login
+            </Link>
+            <Link
+              href="/login?tab=signup"
+              className="text-sm font-medium bg-[#1E5FE8] text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Get Started
+            </Link>
+            {/* Mobile menu toggle */}
+            <button
+              className="lg:hidden p-1 text-gray-600"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
 
-        {notice.activated && (
-          <div className="mx-8 mt-6 flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
-            <p className="text-sm text-green-700">
-              Your access is now active! Please login to continue.
-            </p>
+        {/* Mobile nav dropdown */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden border-t border-gray-100 bg-white px-4 py-4 space-y-3">
+            {navLinks.map((link) => (
+              <Link
+                key={link.label}
+                href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block text-sm font-medium ${
+                  activeSection === link.href ? 'text-[#1E5FE8]' : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <Link
+              href="/login"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block text-sm font-medium text-[#1E5FE8]"
+            >
+              Login
+            </Link>
           </div>
         )}
+      </nav>
 
-        {/* Tabs */}
-        <div className="flex border-b border-gray-200 px-8">
-          {([
-            { id: 'login', label: 'Login' },
-            { id: 'signup', label: 'Sign Up' },
-            { id: 'migrate', label: 'Migrate' },
-          ] as { id: Tab; label: string }[]).map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-                tab === t.id
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+      {/* ========== HERO SECTION ========== */}
+      <section data-section="/" ref={setSectionRef('/')} className="bg-[#EBF3FE]">
+        <div className="max-w-[1200px] mx-auto px-4 lg:px-6 py-16 lg:py-24 flex flex-col lg:flex-row items-center gap-12">
+          {/* Left content */}
+          <div className="flex-1 text-center lg:text-left">
+            {/* Pill badge */}
+            <span className="inline-block bg-[#D6E6FF] text-[#1E5FE8] text-xs font-semibold uppercase tracking-wider px-4 py-1.5 rounded-full mb-6">
+              Restaurant Management Software
+            </span>
 
-        {/* Content */}
-        <div className="p-8">
-          {/* LOGIN */}
-          {tab === 'login' && (
-            <form onSubmit={handleLogin} className="space-y-4 max-w-md mx-auto">
-              <div>
-                <label className={labelClass}>Email Address</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="email"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    className={inputClass}
-                    required
-                  />
+            {/* Headline */}
+            <h1 className="text-4xl lg:text-5xl font-bold leading-tight mb-6">
+              <span className="text-[#0B1B3A]">Simplify Operations.</span>
+              <br />
+              <span className="text-[#1E5FE8]">Grow Your Restaurant.</span>
+            </h1>
+
+            {/* Subtext */}
+            <p className="text-gray-500 text-base lg:text-lg leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0">
+              SmartPOS is an easy-to-use restaurant management software that handles orders, billing,
+              inventory, table management, and business reports — all in one place.
+            </p>
+
+            {/* Mini features row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+              {[
+                { icon: Zap, label: 'Easy to Use', sub: 'Simple and intuitive interface' },
+                { icon: LayoutGrid, label: 'All in One', sub: 'Everything you need in one system' },
+                { icon: Cloud, label: 'Cloud Based', sub: 'Access your business anytime, anywhere' },
+                { icon: Shield, label: 'Secure', sub: 'Your data is safe and protected' },
+              ].map((item) => (
+                <div key={item.label} className="text-center">
+                  <div className="w-12 h-12 mx-auto border-2 border-[#1E5FE8] rounded-full flex items-center justify-center mb-2">
+                    <item.icon className="h-5 w-5 text-[#1E5FE8]" />
+                  </div>
+                  <p className="text-sm font-semibold text-[#0B1B3A]">{item.label}</p>
+                  <p className="text-xs text-gray-400 leading-snug">{item.sub}</p>
                 </div>
-              </div>
-              <div>
-                <label className={labelClass}>Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="password"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    className={inputClass}
-                    required
-                  />
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+              ))}
+            </div>
+
+            {/* CTA buttons */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
+              <a
+                href="#pricing"
+                className="bg-[#1E5FE8] text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
               >
-                {submitting ? 'Signing in...' : 'Login'}
-              </button>
-              <p className="text-center text-sm text-gray-500">
-                <button
-                  type="button"
-                  onClick={() => setTab('forgot')}
-                  className="text-blue-600 font-medium hover:underline"
-                >
-                  Forgot Password?
-                </button>
-              </p>
-              <p className="text-center text-sm text-gray-500">
-                Don&apos;t have an account?{' '}
-                <button
-                  type="button"
-                  onClick={() => setTab('signup')}
-                  className="text-blue-600 font-medium hover:underline"
-                >
-                  Sign Up
-                </button>
-              </p>
-            </form>
-          )}
+                View Plans & Pricing <ArrowRight className="h-4 w-4" />
+              </a>
+              <Link
+                href="/login"
+                className="border-2 border-[#1E5FE8] text-[#1E5FE8] px-8 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
+              >
+                Login to SmartPOS
+              </Link>
+            </div>
+          </div>
 
-          {/* SIGN UP */}
-          {tab === 'signup' && (
-            <form onSubmit={handleSignUp} className="space-y-5">
-              {/* Restaurant Info */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-                  <Store className="h-4 w-4 mr-2 text-blue-600" />
-                  Restaurant Information
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className={labelClass}>Restaurant Name *</label>
-                    <div className="relative">
-                      <Store className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        value={suName}
-                        onChange={(e) => setSuName(e.target.value)}
-                        placeholder="Restaurant name"
-                        className={inputClass}
-                        required
-                      />
-                    </div>
+          {/* Right graphic — product images */}
+          <div className="flex-1 relative flex items-center justify-center min-h-[340px]">
+            <img
+              src="/1.png"
+              alt="SmartPOS Dashboard"
+              className="w-full max-w-[420px] rounded-xl shadow-2xl"
+            />
+            <img
+              src="/2.png"
+              alt="SmartPOS Mobile App"
+              className="absolute -bottom-4 right-0 lg:right-4 w-[120px] lg:w-[160px] rounded-xl shadow-2xl border-4 border-white"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ========== FEATURES SECTION ========== */}
+      <section id="features" data-section="/#features" ref={setSectionRef('/#features')} className="py-20 bg-[#F6F9FC]">
+        <div className="max-w-[1200px] mx-auto px-4 lg:px-6">
+          <h2 className="text-3xl lg:text-4xl font-bold text-[#0B1B3A] text-center mb-3">
+            Powerful Features for Your Restaurant
+          </h2>
+          <p className="text-gray-500 text-center mb-14 max-w-xl mx-auto">
+            Everything you need to run your restaurant smoothly.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {featureCards.map((card) => (
+              <div
+                key={card.title}
+                className="bg-white rounded-xl p-7 border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="w-12 h-12 bg-[#EBF3FE] rounded-xl flex items-center justify-center mb-4">
+                  <card.icon className="h-6 w-6 text-[#1E5FE8]" />
+                </div>
+                <h3 className="text-lg font-semibold text-[#0B1B3A] mb-2">{card.title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{card.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ========== PRICING SECTION ========== */}
+      <section id="pricing" data-section="/#pricing" ref={setSectionRef('/#pricing')} className="py-20 bg-white">
+        <div className="max-w-[1200px] mx-auto px-4 lg:px-6">
+          <h2 className="text-3xl lg:text-4xl font-bold text-[#0B1B3A] text-center mb-3">
+            Simple &amp; Affordable Pricing
+          </h2>
+          <p className="text-gray-500 text-center mb-14 max-w-xl mx-auto">
+            Choose the plan that works best for your restaurant.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 max-w-3xl mx-auto">
+            {/* Monthly */}
+            <div className="bg-white border-2 border-gray-200 rounded-2xl p-8 relative">
+              <p className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                Monthly Plan
+              </p>
+              <div className="flex items-baseline gap-1 mb-2">
+                <span className="text-4xl font-bold text-[#0B1B3A]">₹999</span>
+                <span className="text-gray-400">/month</span>
+              </div>
+              <p className="text-sm text-gray-400 mb-6">
+                Ideal for small and medium restaurants.
+              </p>
+              <ul className="space-y-3 mb-8">
+                {monthlyChecks.map((item) => (
+                  <li key={item} className="flex items-center gap-2.5 text-sm text-gray-600">
+                    <Check className="h-4 w-4 text-[#1E5FE8] flex-shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/login?tab=signup"
+                className="block w-full border-2 border-[#1E5FE8] text-[#1E5FE8] py-3 rounded-lg font-semibold text-center hover:bg-blue-50 transition-colors"
+              >
+                Get Started - Monthly
+              </Link>
+            </div>
+
+            {/* Annual */}
+            <div className="bg-white border-2 border-[#1BA352] rounded-2xl p-8 relative">
+              {/* Popular badge */}
+              <span className="absolute -top-3.5 right-6 bg-[#1BA352] text-white text-xs font-semibold px-4 py-1 rounded-full">
+                Popular
+              </span>
+              <p className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                Annual Plan
+              </p>
+              <div className="flex items-baseline gap-1 mb-2">
+                <span className="text-4xl font-bold text-[#0B1B3A]">₹9,999</span>
+                <span className="text-gray-400">/year</span>
+              </div>
+              <p className="text-sm text-gray-400 mb-6">
+                Best value for growing restaurants.
+              </p>
+              <ul className="space-y-3 mb-8">
+                {annualChecks.map((item) => (
+                  <li key={item} className="flex items-center gap-2.5 text-sm text-gray-600">
+                    <Check className="h-4 w-4 text-[#1BA352] flex-shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/login?tab=signup"
+                className="block w-full bg-[#1BA352] text-white py-3 rounded-lg font-semibold text-center hover:bg-green-700 transition-colors"
+              >
+                Get Started - Annual
+              </Link>
+            </div>
+          </div>
+
+          <p className="text-center text-sm text-gray-400 mt-8">
+            <Lock className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
+            Secure Payments &nbsp;|&nbsp; 100% Safe &amp; Encrypted
+          </p>
+        </div>
+      </section>
+
+      {/* ========== ABOUT US SECTION ========== */}
+      <section id="about" data-section="/about" ref={setSectionRef('/about')} className="py-20 bg-[#F6F9FC]">
+        <div className="max-w-[1200px] mx-auto px-4 lg:px-6">
+          <div className="flex flex-col lg:flex-row items-start gap-12">
+            {/* Left — icon + description */}
+            <div className="flex-1">
+              <div className="w-16 h-16 bg-[#EBF3FE] rounded-full flex items-center justify-center mb-6">
+                <Users className="h-8 w-8 text-[#1E5FE8]" />
+              </div>
+              <h2 className="text-3xl lg:text-4xl font-bold text-[#0B1B3A] mb-4">
+                About SmartPOS
+              </h2>
+              <p className="text-gray-500 leading-relaxed">
+                SmartPOS is a modern restaurant management software designed to help you streamline
+                your operations, improve customer service, and increase profits. From order management
+                to inventory tracking and detailed business reports, SmartPOS gives you everything
+                you need to run your restaurant efficiently.
+              </p>
+            </div>
+
+            {/* Right — merchant / legal info */}
+            <div className="flex-1 w-full">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 space-y-5">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-[#1E5FE8] rounded-full flex items-center justify-center">
+                    <Users className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <label className={labelClass}>GST Number</label>
-                    <div className="relative">
-                      <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        value={suGst}
-                        onChange={(e) => setSuGst(e.target.value)}
-                        placeholder="27AAAAA0000A1Z5"
-                        className={inputClass}
-                      />
-                    </div>
+                    <p className="text-xs text-gray-400">Operated by</p>
+                    <p className="text-base font-bold text-[#1E5FE8]">
+                      GAJANAN DATTATRAYA JOSHI
+                    </p>
+                    <p className="text-xs text-gray-400">Individual Merchant</p>
                   </div>
-                  <div>
-                    <label className={labelClass}>Phone Number</label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="tel"
-                        value={suPhone}
-                        onChange={(e) => setSuPhone(e.target.value)}
-                        placeholder="9876543210"
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Tax Rate (%)</label>
-                    <div className="relative">
-                      <Percent className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="number"
-                        value={suTaxRate}
-                        onChange={(e) => setSuTaxRate(e.target.value)}
-                        placeholder="18"
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Currency *</label>
-                    <div className="relative">
-                      <Coins className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <select
-                        value={suCurrency}
-                        onChange={handleCurrencyChange}
-                        className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm bg-white uppercase"
-                      >
-                        {CURRENCIES.map((c) => (
-                          <option key={c.code} value={c.code}>
-                            {c.code} - {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Subscription plan prices will be shown in this currency.
+                </div>
+
+                <div className="border-t border-gray-100 pt-4 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-gray-600">
+                      HILL GARDEN ROW HOUSE - 4, TIKUJINIWADI ROAD, OPPOSITE TIKUJINIWADI,
+                      CHITALSAR MANPADA, THANE WEST, THANE, MAHARASHTRA - 400610
                     </p>
                   </div>
-                  <div>
-                    <label className={labelClass}>Country Code</label>
-                    <div className="relative">
-                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        value={suCountryCode}
-                        readOnly
-                        placeholder="IN"
-                        className={inputClass + ' bg-gray-50 text-gray-500 cursor-not-allowed'}
-                      />
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                    <p className="text-sm text-gray-600">+91-9820504215</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                    <p className="text-sm text-gray-600">JOSHI_GD@YAHOO.COM</p>
                   </div>
                 </div>
               </div>
-
-              {/* Address */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-                  <MapPin className="h-4 w-4 mr-2 text-blue-600" />
-                  Address
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className={labelClass}>Address Line 1</label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        value={suAddr1}
-                        onChange={(e) => setSuAddr1(e.target.value)}
-                        placeholder="Shop / Building number, Street"
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Address Line 2</label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        value={suAddr2}
-                        onChange={(e) => setSuAddr2(e.target.value)}
-                        placeholder="Area / Locality"
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Address Line 3</label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        value={suAddr3}
-                        onChange={(e) => setSuAddr3(e.target.value)}
-                        placeholder="City, State, PIN"
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Owners */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-                  <Users className="h-4 w-4 mr-2 text-blue-600" />
-                  Owner Information
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className={labelClass}>Owner 1</label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        value={suOwner1}
-                        onChange={(e) => setSuOwner1(e.target.value)}
-                        placeholder="Primary owner name"
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Owner 2</label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        value={suOwner2}
-                        onChange={(e) => setSuOwner2(e.target.value)}
-                        placeholder="Optional"
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Owner 3</label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        value={suOwner3}
-                        onChange={(e) => setSuOwner3(e.target.value)}
-                        placeholder="Optional"
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Owner 4</label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        value={suOwner4}
-                        onChange={(e) => setSuOwner4(e.target.value)}
-                        placeholder="Optional"
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Login Credentials */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-                  <Lock className="h-4 w-4 mr-2 text-blue-600" />
-                  Login Credentials
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className={labelClass}>Email *</label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="email"
-                        value={suEmail}
-                        onChange={(e) => setSuEmail(e.target.value)}
-                        placeholder="you@example.com"
-                        className={inputClass}
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Password *</label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="password"
-                        value={suPassword}
-                        onChange={(e) => setSuPassword(e.target.value)}
-                        placeholder="Min 6 characters"
-                        className={inputClass}
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={labelClass}>MPIN (4 digits)</label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        value={suMpin}
-                        onChange={(e) => setSuMpin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                        placeholder="1234"
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-xs text-blue-800">
-                  After creating your account you can choose to start a{' '}
-                  <span className="font-semibold">30-day free trial (₹0)</span> or subscribe
-                  to a paid plan. The free trial can only be used once.
-                </p>
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                {submitting ? 'Creating account...' : 'Create Account'}
-              </button>
-              <p className="text-center text-sm text-gray-500">
-                Already have an account?{' '}
-                <button
-                  type="button"
-                  onClick={() => setTab('login')}
-                  className="text-blue-600 font-medium hover:underline"
-                >
-                  Login
-                </button>
-              </p>
-            </form>
-          )}
-
-          {/* FORGOT PASSWORD */}
-          {tab === 'forgot' && (
-            <form onSubmit={handleForgot} className="space-y-4 max-w-md mx-auto">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <p className="text-sm text-blue-800">
-                  Enter your account email and a new password to reset your login.
-                </p>
-              </div>
-              <div>
-                <label className={labelClass}>Email Address</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="email"
-                    value={fpEmail}
-                    onChange={(e) => setFpEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    className={inputClass}
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>New Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="password"
-                    value={fpPassword}
-                    onChange={(e) => setFpPassword(e.target.value)}
-                    placeholder="Min 6 characters"
-                    className={inputClass}
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Confirm New Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="password"
-                    value={fpConfirm}
-                    onChange={(e) => setFpConfirm(e.target.value)}
-                    placeholder="Re-enter new password"
-                    className={inputClass}
-                    required
-                  />
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                {submitting ? 'Resetting...' : 'Reset Password'}
-              </button>
-              <p className="text-center text-sm text-gray-500">
-                Remembered your password?{' '}
-                <button
-                  type="button"
-                  onClick={() => setTab('login')}
-                  className="text-blue-600 font-medium hover:underline"
-                >
-                  Login
-                </button>
-              </p>
-            </form>
-          )}
-
-          {/* MIGRATE */}
-          {tab === 'migrate' && (
-            <form onSubmit={handleMigrate} className="space-y-4 max-w-md mx-auto">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <p className="text-sm text-blue-800">
-                  Have an existing Restaurant ID but no email/password? Set up
-                  login credentials for your existing account here.
-                </p>
-              </div>
-              <div>
-                <label className={labelClass}>Restaurant ID</label>
-                <div className="relative">
-                  <Store className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="text"
-                    value={mRestId}
-                    onChange={(e) => setMRestId(e.target.value)}
-                    placeholder="e.g. REST001"
-                    className={inputClass}
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Email Address</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="email"
-                    value={mEmail}
-                    onChange={(e) => setMEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className={inputClass}
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="password"
-                    value={mPassword}
-                    onChange={(e) => setMPassword(e.target.value)}
-                    placeholder="Min 6 characters"
-                    className={inputClass}
-                    required
-                  />
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                {submitting ? 'Migrating...' : 'Migrate Account'}
-              </button>
-              <p className="text-center text-sm text-gray-500">
-                Want to login instead?{' '}
-                <button
-                  type="button"
-                  onClick={() => setTab('login')}
-                  className="text-blue-600 font-medium hover:underline"
-                >
-                  Login
-                </button>
-              </p>
-            </form>
-          )}
+            </div>
+          </div>
         </div>
-      </div>
-      </div>
+      </section>
 
-      {/* Public Footer */}
-      <footer className="py-6 text-center">
-        <p className="text-sm text-white/70 mb-2">
-          &copy; 2026 SmartPOS &bull; Operated by GAJANAN DATTATRAYA JOSHI
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-white/50">
-          <Link href="/about" className="hover:text-white transition-colors">About</Link>
-          <span>&bull;</span>
-          <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
-          <span>&bull;</span>
-          <Link href="/products-and-services" className="hover:text-white transition-colors">Products and Services</Link>
-          <span>&bull;</span>
-          <Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy</Link>
-          <span>&bull;</span>
-          <Link href="/return-refund-policy" className="hover:text-white transition-colors">Refund</Link>
-          <span>&bull;</span>
-          <Link href="/cancellation-policy" className="hover:text-white transition-colors">Cancellation</Link>
-          <span>&bull;</span>
-          <Link href="/shipping-policy" className="hover:text-white transition-colors">Shipping</Link>
+      {/* ========== FOOTER (Dark Navy) ========== */}
+      <footer className="bg-[#0B1B3A] text-white">
+        <div className="max-w-[1200px] mx-auto px-4 lg:px-6 py-14">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+            {/* Col 1 — Logo + tagline + socials */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 border-2 border-white rounded-lg flex items-center justify-center">
+                  <Store className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-lg font-bold">
+                  Smart<span className="text-[#6DA4FF]">POS</span>
+                </span>
+              </div>
+              <p className="text-sm text-gray-400 leading-relaxed mb-5">
+                SmartPOS is a subscription-based restaurant management solution that helps
+                restaurants manage their day-to-day operations efficiently.
+              </p>
+              <div className="flex items-center gap-3">
+                <a
+                  href="#"
+                  className="w-9 h-9 rounded-full border border-gray-600 flex items-center justify-center hover:border-white transition-colors"
+                >
+                  <Facebook className="h-4 w-4 text-gray-400" />
+                </a>
+                <a
+                  href="#"
+                  className="w-9 h-9 rounded-full border border-gray-600 flex items-center justify-center hover:border-white transition-colors"
+                >
+                  <Instagram className="h-4 w-4 text-gray-400" />
+                </a>
+                <a
+                  href="#"
+                  className="w-9 h-9 rounded-full border border-gray-600 flex items-center justify-center hover:border-white transition-colors"
+                >
+                  <Linkedin className="h-4 w-4 text-gray-400" />
+                </a>
+              </div>
+            </div>
+
+            {/* Col 2 — Quick Links */}
+            <div>
+              <h4 className="text-sm font-semibold uppercase tracking-wider mb-4">Quick Links</h4>
+              <ul className="space-y-2.5">
+                {[
+                  { label: 'Home', href: '#' },
+                  { label: 'About Us', href: '#about' },
+                  { label: 'Products & Services', href: '#features' },
+                  { label: 'Pricing', href: '#pricing' },
+                  { label: 'Features', href: '#features' },
+                  { label: 'Contact Us', href: '#about' },
+                ].map((link) => (
+                  <li key={link.label}>
+                    <a
+                      href={link.href}
+                      className="text-sm text-gray-400 hover:text-white transition-colors"
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Col 3 — Policies */}
+            <div>
+              <h4 className="text-sm font-semibold uppercase tracking-wider mb-4">Policy</h4>
+              <ul className="space-y-2.5">
+                {[
+                  { label: 'Privacy Policy', href: '/privacy-policy' },
+                  { label: 'Refund Policy', href: '/return-refund-policy' },
+                  { label: 'Cancellation Policy', href: '/cancellation-policy' },
+                  { label: 'Shipping / Delivery Policy', href: '/shipping-policy' },
+                  { label: 'Terms & Conditions', href: '/privacy-policy' },
+                ].map((link) => (
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-gray-400 hover:text-white transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Col 4 — Contact */}
+            <div>
+              <h4 className="text-sm font-semibold uppercase tracking-wider mb-4">Contact</h4>
+              <ul className="space-y-3">
+                <li className="flex items-center gap-3">
+                  <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <span className="text-sm text-gray-400">+91-9820504215</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <span className="text-sm text-gray-400">JOSHI_GD@YAHOO.COM</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                  <span className="text-sm text-gray-400">
+                    Thane, Maharashtra, India
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        <div className="border-t border-gray-700/50">
+          <div className="max-w-[1200px] mx-auto px-4 lg:px-6 py-5 text-center">
+            <p className="text-sm text-gray-500">
+              &copy; 2026 SmartPOS &bull; Operated by GAJANAN DATTATRAYA JOSHI. All Rights Reserved.
+            </p>
+          </div>
         </div>
       </footer>
     </div>
